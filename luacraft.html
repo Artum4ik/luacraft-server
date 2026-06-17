@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuaCraft — Интерактивный тренажёр</title>
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/editor/editor.main.min.css">
+    <style>
+        :root {
+            --bg0: #0a0e14;
+            --bg1: #12171f;
+            --bg2: #1a2029;
+            --bg3: #222832;
+            --bdr: #2a3040;
+            --txt: #c9d1d9;
+            --txt2: #8b949e;
+            --txt3: #f0f6fc;
+            --blue: #58a6ff;
+            --green: #3fb950;
+            --red: #f85149;
+            --purple: #a371f7;
+            --cyan: #39d2c0;
+            --orange: #d2991d;
+            --yellow: #e3b341;
+            --radius: 8px;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: var(--bg0);
+            color: var(--txt);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #mainScreen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 20px;
+            gap: 16px;
+            overflow-y: auto;
+            align-items: center;
+        }
+        #mainScreen.hidden {
+            display: none;
+        }
+        .logo {
+            font-size: 36px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--blue), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            color: var(--txt2);
+            font-size: 13px;
+            margin-top: -6px;
+        }
+        .userBar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg1);
+            padding: 8px 14px;
+            border-radius: var(--radius);
+            border: 1px solid var(--bdr);
+        }
+        .userBar span {
+            color: var(--txt2);
+            font-size: 13px;
+        }
+        .userBar input {
+            background: var(--bg2);
+            border: 1px solid var(--bdr);
+            color: var(--txt);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            width: 140px;
+        }
+        .userBar button {
+            background: var(--blue);
+            color: #000;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .tracks {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1000px;
+            width: 100%;
+        }
+        .trackCard {
+            flex: 1;
+            min-width: 270px;
+            max-width: 320px;
+            background: var(--bg1);
+            border: 1px solid var(--bdr);
+            border-radius: var(--radius);
+            padding: 20px 18px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: 0.2s;
+        }
+        .trackCard:hover {
+            border-color: var(--blue);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        }
+        .trackCard .icon {
+            font-size: 40px;
+        }
+        .trackCard .title {
+            font-size: 19px;
+            font-weight: 700;
+            color: var(--txt3);
+        }
+        .trackCard .desc {
+            color: var(--txt2);
+            font-size: 12px;
+            line-height: 1.5;
+            flex: 1;
+        }
+        .trackCard .prog {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--txt2);
+        }
+        .trackCard .progBar {
+            flex: 1;
+            height: 4px;
+            background: var(--bg2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .trackCard .progFill {
+            height: 100%;
+            border-radius: 2px;
+        }
+        .progFill.lua {
+            background: var(--blue);
+        }
+        .progFill.roblox {
+            background: var(--red);
+        }
+        .progFill.solar {
+            background: var(--orange);
+        }
+        #lessonScreen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #lessonScreen.hidden {
+            display: none;
+        }
+        .topbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: var(--bg1);
+            border-bottom: 1px solid var(--bdr);
+            flex-shrink: 0;
+            z-index: 10;
+        }
+        .btnBack {
+            background: var(--bg2);
+            border: 1px solid var(--bdr);
+            color: var(--txt);
+            padding: 7px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .btnBack:hover {
+            background: #333;
+            color: var(--txt3);
+        }
+        .lessonName {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--txt3);
+            flex: 1;
+        }
+        .lessonNum {
+            font-size: 12px;
+            color: var(--txt2);
+            background: var(--bg2);
+            padding: 5px 12px;
+            border-radius: 14px;
+        }
+        .scrollContent {
+            flex: 1;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        .theorySection {
+            background: var(--bg1);
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--bdr);
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .sectionLabel {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--blue);
+            font-weight: 700;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .theorySection h3 {
+            font-size: 18px;
+            color: var(--txt3);
+            margin-bottom: 10px;
+        }
+        .theorySection p {
+            font-size: 14px;
+            color: var(--txt2);
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+        .theorySection p code {
+            background: var(--bg2);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            color: var(--red);
+        }
+        .codeBlock {
+            background: #0d1117;
+            border: 1px solid var(--bdr);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.9;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 12px 0;
+            color: #c9d1d9;
+            overflow-x: auto;
+        }
+        .codeBlock .kw {
+            color: #ff7b72;
+            font-weight: bold;
+        }
+        .codeBlock .str {
+            color: #a5d6ff;
+        }
+        .codeBlock .num {
+            color: #79c0ff;
+        }
+        .codeBlock .cmt {
+            color: #8b949e;
+            font-style: italic;
+        }
+        .codeBlock .func {
+            color: #d2a8ff;
+        }
+        .codeBlock .bool {
+            color: #56d364;
+        }
+        .explainBox {
+            background: #151b24;
+            border: 1px solid var(--bdr);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            font-size: 13px;
+            color: var(--txt2);
+            line-height: 1.7;
+            margin: 10px 0;
+        }
+        .expTitle {
+            font-weight: 700;
+            color: var(--yellow);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .expLine {
+            display: flex;
+            gap: 10px;
+            padding: 4px 0;
+            align-items: flex-start;
+        }
+        .expNum {
+            color: var(--txt2);
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+            min-width: 26px;
+            text-align: right;
+            opacity: 0.6;
+        }
+        .expText {
+            flex: 1;
+        }
+        .expText code {
+            background: var(--bg2);
+            padding: 1px 5px;
+            border-radius: 2px;
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+            color: var(--orange);
+        }
+        .hintBox {
+            background: #1a1f2b;
+            border-left: 3px solid var(--orange);
+            padding: 14px 16px;
+            border-radius: 0 var(--radius) var(--radius) 0;
+            font-size: 13px;
+            color: var(--txt2);
+            line-height: 1.7;
+            margin: 10px 0;
+        }
+        .hintBox strong {
+            color: var(--orange);
+        }
+        .tipBox {
+            background: #1a1f2b;
+            border-left: 3px solid var(--cyan);
+            padding: 14px 16px;
+            border-radius: 0 var(--radius) var(--radius) 0;
+            font-size: 13px;
+            color: var(--txt2);
+            line-height: 1.7;
+            margin: 10px 0;
+        }
+        .tipBox strong {
+            color: var(--cyan);
+        }
+        .practiceSection {
+            background: var(--bg0);
+            padding: 20px 24px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .taskHeader {
+            background: var(--bg1);
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--bdr);
+            margin-bottom: 16px;
+        }
+        .tTitle {
+            font-weight: 700;
+            color: var(--txt3);
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .tDesc {
+            font-size: 14px;
+            color: var(--txt2);
+            line-height: 1.6;
+        }
+        .tCriteria {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .critBadge {
+            font-size: 11px;
+            padding: 5px 12px;
+            border-radius: 14px;
+            background: var(--bg2);
+            color: var(--txt2);
+            border: 1px solid var(--bdr);
+        }
+        .editorWrap {
+            height: 400px;
+            border: 1px solid var(--bdr);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        #editor {
+            width: 100%;
+            height: 100%;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+        }
+        .btnRun {
+            background: var(--blue);
+            color: #000;
+        }
+        .btnRun:hover {
+            filter: brightness(1.2);
+        }
+        .btnCheck {
+            background: var(--green);
+            color: #000;
+        }
+        .btnCheck:hover {
+            filter: brightness(1.2);
+        }
+        .btnReset {
+            background: var(--bg2);
+            color: var(--txt);
+            border: 1px solid var(--bdr);
+        }
+        .btnReset:hover {
+            background: var(--bg3);
+        }
+        .btnNext {
+            background: var(--purple);
+            color: #fff;
+            margin-left: auto;
+        }
+        .btnNext:hover:not(:disabled) {
+            filter: brightness(1.2);
+        }
+        .btnNext:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .output {
+            background: #0d1117;
+            border: 1px solid var(--bdr);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            min-height: 60px;
+            max-height: 250px;
+            overflow-y: auto;
+            color: #c9d1d9;
+            margin-bottom: 30px;
+        }
+        .outOk {
+            color: var(--green);
+        }
+        .outErr {
+            color: var(--red);
+        }
+        .outInfo {
+            color: var(--cyan);
+        }
+        .outWarn {
+            color: var(--orange);
+        }
+        .outHead {
+            color: var(--purple);
+            font-weight: 700;
+        }
+        .outBig {
+            font-size: 15px;
+            font-weight: 700;
+        }
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--bdr);
+        }
+    </style>
+</head>
+<body>
+    <div id="mainScreen">
+        <div class="logo">⚡ LuaCraft</div>
+        <div class="subtitle">Интерактивный тренажёр: Lua → Roblox → Solar2D</div>
+        <div class="userBar">
+            <span>👤 Игрок:</span>
+            <input id="userIdInput" type="text" value="Artum4ik" placeholder="Твой логин">
+            <button id="btnChangeUser">Сменить</button>
+            <span id="serverStatus" style="font-size:11px;color:var(--txt2);">🔌 Проверка...</span>
+        </div>
+        <div class="tracks" id="tracksContainer"></div>
+    </div>
+
+    <div id="lessonScreen" class="hidden">
+        <div class="topbar">
+            <button class="btnBack" id="btnBack">← К трекам</button>
+            <span class="lessonName" id="lessonName">Урок</span>
+            <span class="lessonNum" id="lessonNum">1/20</span>
+        </div>
+        <div class="scrollContent" id="scrollContent">
+            <div class="theorySection" id="theorySection"></div>
+            <div class="practiceSection">
+                <div class="taskHeader">
+                    <div class="tTitle" id="tTitle">Задание</div>
+                    <div class="tDesc" id="tDesc">Описание</div>
+                    <div class="tCriteria" id="tCriteria"></div>
+                </div>
+                <div class="editorWrap"><div id="editor"></div></div>
+                <div class="actions">
+                    <button class="btn btnRun" id="btnRun">▶ Запустить</button>
+                    <button class="btn btnCheck" id="btnCheck">✓ Проверить</button>
+                    <button class="btn btnReset" id="btnReset">↺ Сброс</button>
+                    <button class="btn btnNext" id="btnNext" disabled>Далее →</button>
+                </div>
+                <div class="output" id="output">🟢 Готов. Выбери трек и начни обучение.</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <script>
+    require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+    require(['vs/editor/editor.main'], function() {
+        var API_URL = window.location.origin;
+        var USER_ID = 'Artum4ik';
+
+        var tracks = [
+            { id: 'lua', title: 'Чистый Lua', icon: '🌙', desc: 'Основы языка: переменные, типы, таблицы, функции, модули. 20 уроков.', color: 'lua', total: 20 },
+            { id: 'roblox', title: 'Roblox Luau', icon: '🎮', desc: 'Создание игр в Roblox: Parts, события, сервер/клиент. 25 уроков.', color: 'roblox', total: 25 },
+            { id: 'solar', title: 'Solar2D', icon: '☀️', desc: '2D-игры на Solar2D: графика, анимации, физика. 22 урока.', color: 'solar', total: 22 }
+        ];
+
+        var progress = { lua: { done: 0 }, roblox: { done: 0 }, solar: { done: 0 } };
+        var serverAvailable = false;
+
+        function $(id) { return document.getElementById(id); }
+
+        function checkServer() {
+            fetch(API_URL + '/api/progress?user_id=' + USER_ID)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    serverAvailable = true;
+                    $('serverStatus').textContent = '🟢 Сервер';
+                    $('serverStatus').style.color = '#3fb950';
+                    if (data.lua) progress.lua.done = data.lua;
+                    if (data.roblox) progress.roblox.done = data.roblox;
+                    if (data.solar) progress.solar.done = data.solar;
+                    renderTracks();
+                })
+                .catch(function() {
+                    serverAvailable = false;
+                    $('serverStatus').textContent = '🔴 Офлайн';
+                    $('serverStatus').style.color = '#f85149';
+                    loadLocalProgress();
+                    renderTracks();
+                });
+        }
+
+        function loadLocalProgress() {
+            try {
+                var s = localStorage.getItem('luacraft_v16');
+                if (s) {
+                    var p = JSON.parse(s);
+                    if (p.lua != null) progress.lua.done = p.lua;
+                    if (p.roblox != null) progress.roblox.done = p.roblox;
+                    if (p.solar != null) progress.solar.done = p.solar;
+                }
+            } catch (e) {}
+        }
+
+        function saveProgressToServer() {
+            localStorage.setItem('luacraft_v16', JSON.stringify(progress));
+            if (!serverAvailable) return;
+            for (var i = 0; i < tracks.length; i++) {
+                var t = tracks[i];
+                fetch(API_URL + '/api/progress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: USER_ID, track: t.id, lesson_index: progress[t.id].done })
+                }).catch(function() {});
+            }
+        }
+
+        $('btnChangeUser').addEventListener('click', function() {
+            USER_ID = $('userIdInput').value || 'Artum4ik';
+            progress = { lua: { done: 0 }, roblox: { done: 0 }, solar: { done: 0 } };
+            localStorage.removeItem('luacraft_v16');
+            checkServer();
+        });
+
+        var lessons = { lua: [], roblox: [], solar: [] };
+
+        lessons.lua.push(
+    // ==================== УРОК 1 ====================
+    {
+        title: 'Переменные и типы данных',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Что такое переменная?</h3>' +
+            '<p><b>Переменная</b> — это именованная ячейка памяти компьютера. Можно представить коробку с наклейкой: на наклейке написано имя (например <code>name</code>), а внутри коробки лежит значение (например <code>"Алекс"</code>).</p>' +
+            '<p>В языке Lua переменные создаются с помощью ключевого слова <code>local</code>. Это слово говорит движку Lua: «создай новую переменную, которая будет видна только внутри текущего блока кода».</p>' +
+            '<p>Основные типы данных в Lua:</p>' +
+            '<p><b>• string</b> — строка (текст в кавычках <code>"..."</code> или <code>\'...\'</code>)<br>' +
+            '<b>• number</b> — число (целое или дробное, через точку)<br>' +
+            '<b>• boolean</b> — булево (<code>true</code> или <code>false</code>)<br>' +
+            '<b>• nil</b> — пустота, отсутствие значения</p>' +
+            '<div class="codeBlock"><span class="cmt">-- Создаём переменные разных типов</span>\n<span class="kw">local</span> name = <span class="str">"Алекс"</span>      <span class="cmt">-- строка (текст всегда в кавычках)</span>\n<span class="kw">local</span> age = <span class="num">25</span>            <span class="cmt">-- целое число (без кавычек)</span>\n<span class="kw">local</span> height = <span class="num">1.82</span>       <span class="cmt">-- дробное число (через точку, не запятую!)</span>\n<span class="kw">local</span> isStudent = <span class="bool">true</span>    <span class="cmt">-- булево: только true (да) или false (нет)</span>\n<span class="kw">local</span> nothing = <span class="kw">nil</span>        <span class="cmt">-- nil: пусто, ничего нет</span>\n\n<span class="cmt">-- Вывод значений в консоль</span>\n<span class="func">print</span>(name)               <span class="cmt">-- покажет: Алекс</span>\n<span class="func">print</span>(<span class="str">"Возраст: "</span> .. age) <span class="cmt">-- склейка строки и числа: "Возраст: 25"</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Построчный разбор кода:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><code>-- Создаём переменные</code> — это комментарий. Всё что после двух дефисов <code>--</code> Lua игнорирует. Комментарии нужны чтобы пояснять код.</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><code>local name = "Алекс"</code> — создаём переменную с именем <b>name</b>. <code>local</code> — команда «создать локальную переменную». Знак <code>=</code> — оператор присваивания (положить значение в переменную). <code>"Алекс"</code> — строковое значение, всегда пишется в кавычках.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText"><code>local age = 25</code> — переменная <b>age</b> хранит число. Числа пишутся БЕЗ кавычек. Если написать <code>"25"</code> — это будет строка, а не число, и математика с ней не сработает.</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText"><code>local height = 1.82</code> — дробные числа пишутся через ТОЧКУ (не запятую!). Lua понимает и целые и дробные числа — все они имеют тип <b>number</b>.</span></div>' +
+            '<div class="expLine"><span class="expNum">5</span><span class="expText"><code>local isStudent = true</code> — булев (логический) тип. Может принимать только два значения: <code>true</code> (истина, да) или <code>false</code> (ложь, нет).</span></div>' +
+            '<div class="expLine"><span class="expNum">6</span><span class="expText"><code>local nothing = nil</code> — <b>nil</b> означает «ничего нет». Переменная существует, но значения у неё нет.</span></div>' +
+            '<div class="expLine"><span class="expNum">9</span><span class="expText"><code>print(name)</code> — функция <b>print()</b> выводит значение в консоль. В скобках — что выводить.</span></div>' +
+            '<div class="expLine"><span class="expNum">10</span><span class="expText"><code>print("Возраст: " .. age)</code> — оператор <code>..</code> (две точки) склеивает строки. Число <b>age</b> автоматически превращается в текст при склейке.</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>💡 Главный совет:</strong> Всегда используй <code>local</code> при создании переменных. Если забыть <code>local</code>, переменная станет <b>глобальной</b> — будет видна во всех файлах и функциях, а это самая частая причина багов.</div>' +
+            '<div class="hintBox"><strong>⚠️ Правила имён переменных:</strong> Имя может содержать буквы (в том числе русские), цифры и знак подчёркивания <code>_</code>. Имя НЕ может начинаться с цифры. Имена чувствительны к регистру: <code>name</code> и <code>Name</code> — это ДВЕ РАЗНЫЕ переменные.</div>',
+        taskTitle: '📝 Задание 1: Создай свои переменные',
+        taskDesc: 'Создай три переменные с именами "имя" (строка с твоим именем), "возраст" (число), "город" (строка). Выведи их через запятую в ОДНОЙ строке с помощью функции print(). Пример вывода: «Алекс, 25, Москва»',
+        criteria: ['Использовать local для всех трёх переменных', 'имя — строка в кавычках', 'возраст — число без кавычек', 'город — строка в кавычках', 'Один print(), вывод через запятую'],
+        starter: '-- Создай три переменные: имя, возраст, город\n-- Затем выведи их одной строкой через запятую\n-- Пример: print(имя .. ", " .. возраст .. ", " .. город)\n',
+        checks: [{ t: 'kw', kw: 'local', min: 3, msg: 'Нужно 3 local (по одному на каждую переменную)' }, { t: 'out', v: ',', msg: 'Вывод должен содержать запятые между значениями' }]
+    },
+
+    // ==================== УРОК 2 ====================
+    {
+        title: 'Арифметические операции',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Математика в Lua</h3>' +
+            '<p>Lua умеет выполнять все базовые арифметические операции. Результат вычисления можно сразу вывести через <code>print()</code> или сохранить в переменную для дальнейшего использования.</p>' +
+            '<p><b>⚠️ ВАЖНОЕ ПРАВИЛО:</b> Когда соединяешь текст и арифметику через оператор <code>..</code> (склейка строк), всегда бери арифметическое выражение в скобки <code>()</code>. Иначе будет неправильный результат!</p>' +
+            '<div class="codeBlock"><span class="kw">local</span> a = <span class="num">10</span>   <span class="cmt">-- первое число</span>\n<span class="kw">local</span> b = <span class="num">3</span>    <span class="cmt">-- второе число</span>\n\n<span class="cmt">-- Правильно (со скобками):</span>\n<span class="func">print</span>(<span class="str">"Сумма: "</span> .. (a + b))      <span class="cmt">-- 13</span>\n<span class="func">print</span>(<span class="str">"Разность: "</span> .. (a - b))   <span class="cmt">-- 7</span>\n<span class="func">print</span>(<span class="str">"Произведение: "</span> .. (a * b)) <span class="cmt">-- 30</span>\n<span class="func">print</span>(<span class="str">"Деление: "</span> .. (a / b))     <span class="cmt">-- 3.333...</span>\n<span class="func">print</span>(<span class="str">"Остаток: "</span> .. (a % b))     <span class="cmt">-- 1 (3 целых, остаток 1)</span>\n<span class="func">print</span>(<span class="str">"Степень: "</span> .. (a ^ b))     <span class="cmt">-- 1000 (10³)</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Подробный разбор каждой операции:</div>' +
+            '<div class="expLine"><span class="expNum">1-2</span><span class="expText">Создаём две числовые переменные <b>a</b> и <b>b</b> для примеров.</span></div>' +
+            '<div class="expLine"><span class="expNum">5</span><span class="expText"><code>a + b</code> — оператор <b>плюс</b> складывает два числа. 10 + 3 = <b>13</b>.</span></div>' +
+            '<div class="expLine"><span class="expNum">6</span><span class="expText"><code>a - b</code> — оператор <b>минус</b> вычитает второе число из первого. 10 - 3 = <b>7</b>.</span></div>' +
+            '<div class="expLine"><span class="expNum">7</span><span class="expText"><code>a * b</code> — оператор <b>звёздочка</b> умножает числа. 10 × 3 = <b>30</b>.</span></div>' +
+            '<div class="expLine"><span class="expNum">8</span><span class="expText"><code>a / b</code> — оператор <b>слеш</b> делит первое число на второе. <b>Важно:</b> деление ВСЕГДА возвращает дробное число. 10 / 3 = <b>3.333...</b>.</span></div>' +
+            '<div class="expLine"><span class="expNum">9</span><span class="expText"><code>a % b</code> — оператор <b>процент</b> возвращает остаток от деления. 10 / 3 = 3 целых и <b>1</b> в остатке. Полезно для проверки чётности.</span></div>' +
+            '<div class="expLine"><span class="expNum">10</span><span class="expText"><code>a ^ b</code> — оператор <b>крышка</b> возводит число в степень. 10³ = 10 × 10 × 10 = <b>1000</b>.</span></div>' +
+            '</div>' +
+            '<div class="hintBox"><strong>⚠️ Почему нужны скобки?</strong> Без скобок <code>print("Сумма: " .. x + y)</code> превращается в <code>"Сумма: " + 15 + 7</code> → <code>"Сумма: 157"</code>. А <code>print("Сумма: " .. (x + y))</code> сначала считает <code>(15 + 7) = 22</code>, потом склеивает: <code>"Сумма: " .. 22</code> → <code>"Сумма: 22"</code>. Всегда ставь скобки!</div>' +
+            '<div class="tipBox"><strong>💡 Приоритет операций (как в школе):</strong> Сначала скобки <code>()</code>, потом степень <code>^</code>, потом умножение/деление <code>* / %</code>, потом сложение/вычитание <code>+ -</code>. Если сомневаешься — ставь скобки.</div>',
+        taskTitle: '📝 Задание 2: Калькулятор',
+        taskDesc: 'Создай две переменные: x = 15 и y = 7. Вычисли и выведи их сумму, разность, произведение и деление. Каждый результат с подписью: «Сумма: 22», «Разность: 8», «Произведение: 105», «Деление: 2.142...». Не забудь скобки вокруг арифметики!',
+        criteria: ['Переменные x и y — числа', 'Вывод суммы с подписью', 'Вывод разности с подписью', 'Вывод произведения с подписью', 'Вывод деления с подписью'],
+        starter: '-- Создай переменные x = 15 и y = 7\n-- Выведи сумму, разность, произведение и деление с подписями\n-- ВАЖНО: используй скобки! print("Сумма: " .. (x + y))\n',
+        checks: [{ t: 'out', v: 'Сумма', msg: 'Нужна подпись «Сумма»' }, { t: 'out', v: 'Разность', msg: 'Нужна подпись «Разность»' }, { t: 'out', v: 'Произведение', msg: 'Нужна подпись «Произведение»' }]
+    },
+
+    // ==================== УРОК 3 ====================
+    {
+        title: 'Условные операторы if/else',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Принимаем решения в коде</h3>' +
+            '<p>Условный оператор <code>if</code> (переводится с английского как «если») позволяет выполнять разный код в зависимости от условий. Это как развилка на дороге: если условие истинно — идём по одной ветке, если ложно — по другой.</p>' +
+            '<div class="codeBlock"><span class="kw">local</span> health = <span class="num">75</span>   <span class="cmt">-- здоровье игрока</span>\n\n<span class="kw">if</span> health > <span class="num">50</span> <span class="kw">then</span>\n    <span class="func">print</span>(<span class="str">"Всё отлично!"</span>)        <span class="cmt">-- если health БОЛЬШЕ 50</span>\n<span class="kw">elseif</span> health > <span class="num">20</span> <span class="kw">then</span>\n    <span class="func">print</span>(<span class="str">"Нужно подлечиться"</span>)   <span class="cmt">-- если health от 21 до 50</span>\n<span class="kw">else</span>\n    <span class="func">print</span>(<span class="str">"Критическое состояние!"</span>) <span class="cmt">-- если health 20 или меньше</span>\n<span class="kw">end</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Построчный разбор:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><code>local health = 75</code> — создаём переменную health со значением 75.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText"><code>if health > 50 then</code> — ключевое слово <b>if</b> начинает проверку. Условие <code>health > 50</code> означает «health больше 50?». Если ДА (true) — выполняется код после слова <b>then</b> (тогда).</span></div>' +
+            '<div class="expLine"><span class="expNum">5</span><span class="expText"><code>elseif health > 20 then</code> — если первое условие было ложным, проверяется второе. <b>elseif</b> (пишется слитно!) означает «иначе если». Можно добавить сколько угодно elseif-блоков.</span></div>' +
+            '<div class="expLine"><span class="expNum">7</span><span class="expText"><code>else</code> — если НИ ОДНО из условий выше не было истинным, выполняется блок после <b>else</b> (иначе). Else всегда последний и БЕЗ условия.</span></div>' +
+            '<div class="expLine"><span class="expNum">9</span><span class="expText"><code>end</code> — ОБЯЗАТЕЛЬНОЕ закрытие всего условного блока. Каждый if должен заканчиваться словом <b>end</b>. Забудете end — получите ошибку.</span></div>' +
+            '</div>' +
+            '<div class="hintBox"><strong>⚠️ Операторы сравнения (их нужно запомнить):</strong><br><code>==</code> — равно (ДВА знака равно! Один знак <code>=</code> это присваивание)<br><code>~=</code> — НЕ равно (тильда + равно)<br><code>></code> — больше<br><code><</code> — меньше<br><code>>=</code> — больше или равно<br><code><=</code> — меньше или равно</div>' +
+            '<div class="tipBox"><strong>💡 Логические операторы (для сложных условий):</strong><br><code>and</code> — логическое И (оба условия должны быть истинны)<br><code>or</code> — логическое ИЛИ (хотя бы одно истинно)<br><code>not</code> — логическое НЕ (переворачивает условие)<br>Пример: <code>if x > 0 and x < 10 then</code> — x находится между 1 и 9.</div>',
+        taskTitle: '📝 Задание 3: Проверка возраста',
+        taskDesc: 'Создай переменную "возраст" (число). Если возраст >= 18 — выведи «Доступ разрешён», иначе (else) — выведи «Доступ запрещён». Не забудь про end!',
+        criteria: ['Переменная возраст (число)', 'Использован if', 'Использован else', 'Блок закрыт словом end'],
+        starter: '-- Создай переменную "возраст" (число)\n-- Используй if/else для проверки\n-- Не забудь end в конце!\n',
+        checks: [{ t: 'kw', kw: 'if', min: 1, msg: 'Нужен оператор if' }, { t: 'kw', kw: 'end', min: 1, msg: 'Нужно закрыть блок словом end' }]
+    },
+
+    // ==================== УРОК 4 ====================
+    {
+        title: 'Циклы while',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Повторяем код, пока условие истинно</h3>' +
+            '<p>Цикл <code>while</code> (переводится как «пока») выполняет блок кода снова и снова, пока условие остаётся истинным (true). Как только условие становится ложным — цикл прекращается.</p>' +
+            '<div class="codeBlock"><span class="kw">local</span> i = <span class="num">1</span>            <span class="cmt">-- начальное значение счётчика</span>\n\n<span class="kw">while</span> i <= <span class="num">5</span> <span class="kw">do</span>       <span class="cmt">-- "пока i меньше или равно 5, делай"</span>\n    <span class="func">print</span>(<span class="str">"Шаг "</span> .. i)  <span class="cmt">-- выводим текущий номер шага</span>\n    i = i + <span class="num">1</span>          <span class="cmt">-- ОБЯЗАТЕЛЬНО увеличиваем счётчик!</span>\n<span class="kw">end</span>\n<span class="cmt">-- Выведет: Шаг 1, Шаг 2, Шаг 3, Шаг 4, Шаг 5</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Построчный разбор:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><code>local i = 1</code> — создаём переменную-счётчик с начальным значением 1.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText"><code>while i <= 5 do</code> — заголовок цикла. <b>while</b> — «пока». <b>i <= 5</b> — условие продолжения (i меньше или равно 5?). <b>do</b> — «делай», начало тела цикла.</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText"><code>print("Шаг " .. i)</code> — тело цикла. Этот код выполняется на каждом витке (итерации).</span></div>' +
+            '<div class="expLine"><span class="expNum">5</span><span class="expText"><code>i = i + 1</code> — увеличиваем счётчик на 1. <b>КРИТИЧЕСКИ ВАЖНО:</b> без этой строки условие <b>i <= 5</b> всегда будет истинным, цикл станет бесконечным, и программа зависнет!</span></div>' +
+            '<div class="expLine"><span class="expNum">6</span><span class="expText"><code>end</code> — конец тела цикла. После end программа возвращается к проверке условия.</span></div>' +
+            '</div>' +
+            '<div class="hintBox"><strong>⚠️ Осторожно — бесконечный цикл!</strong> Если забыть изменить условие внутри цикла (не увеличить счётчик), цикл будет выполняться бесконечно. Программа зависнет, и придётся её перезапускать. Всегда проверяй, что условие рано или поздно станет ложным.</div>' +
+            '<div class="tipBox"><strong>💡 Когда использовать while:</strong> Когда ты НЕ знаешь заранее сколько будет итераций. Например: «читай файл пока не закончится» или «жди пока игрок не нажмёт кнопку».</div>',
+        taskTitle: '📝 Задание 4: Считаем до 10',
+        taskDesc: 'Используй цикл while, чтобы вывести числа от 1 до 10 (каждое с новой строки). Не забудь увеличивать счётчик (i = i + 1)!',
+        criteria: ['Использован while', 'Счётчик увеличивается (i = i + 1)', 'Вывод чисел от 1 до 10'],
+        starter: '-- Создай переменную-счётчик i = 1\n-- Используй while i <= 10\n-- Выводи i и увеличивай на 1\n',
+        checks: [{ t: 'kw', kw: 'while', min: 1, msg: 'Нужен цикл while' }, { t: 'code', v: 'i = i + 1', msg: 'Нужно увеличивать счётчик (i = i + 1)' }]
+    },
+
+    // ==================== УРОК 5 ====================
+    {
+        title: 'Циклы for',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Цикл со встроенным счётчиком</h3>' +
+            '<p>Цикл <code>for</code> удобнее while, когда ты знаешь точное количество повторений. Счётчик создаётся и увеличивается автоматически — не нужно писать <code>i = i + 1</code> вручную.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- for начальное, конечное, шаг do</span>\n<span class="kw">for</span> i = <span class="num">1</span>, <span class="num">5</span> <span class="kw">do</span>\n    <span class="func">print</span>(i)  <span class="cmt">-- 1, 2, 3, 4, 5</span>\n<span class="kw">end</span>\n\n<span class="cmt">-- С шагом 2 (третье число):</span>\n<span class="kw">for</span> i = <span class="num">2</span>, <span class="num">10</span>, <span class="num">2</span> <span class="kw">do</span>\n    <span class="func">print</span>(i)  <span class="cmt">-- 2, 4, 6, 8, 10</span>\n<span class="kw">end</span>\n\n<span class="cmt">-- Обратный отсчёт (шаг -1):</span>\n<span class="kw">for</span> i = <span class="num">5</span>, <span class="num">1</span>, -<span class="num">1</span> <span class="kw">do</span>\n    <span class="func">print</span>(i)  <span class="cmt">-- 5, 4, 3, 2, 1</span>\n<span class="kw">end</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Разбор параметров for:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><b>Первое число</b> — начальное значение счётчика (i начнёт с 1).</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><b>Второе число</b> — конечное значение (цикл остановится когда i станет больше 5).</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText"><b>Третье число</b> (необязательное) — шаг. Если не указан, шаг = 1. Можно указать отрицательный шаг для обратного отсчёта.</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>💡 Совет:</strong> Используй <code>for</code> когда знаешь точное количество повторений. Это безопаснее чем <code>while</code> — нельзя забыть увеличить счётчик и получить бесконечный цикл.</div>' +
+            '<div class="hintBox"><strong>⚠️ Область видимости:</strong> Переменная <b>i</b> в цикле for существует ТОЛЬКО внутри цикла. Снаружи она будет равна nil (если только не была объявлена как local до цикла).</div>',
+        taskTitle: '📝 Задание 5: Чётные числа',
+        taskDesc: 'Используй цикл for, чтобы вывести все чётные числа от 2 до 20 включительно (2, 4, 6, ..., 20). Подсказка: используй шаг 2.',
+        criteria: ['Использован цикл for', 'Шаг 2', 'Вывод чисел 2, 4, 6...20'],
+        starter: '-- Используй цикл for с шагом 2\n-- Начни с 2, закончи на 20\n-- Выводи каждое число\n',
+        checks: [{ t: 'kw', kw: 'for', min: 1, msg: 'Нужен цикл for' }, { t: 'out', v: '2', msg: 'Должен быть вывод чисел' }]
+    }
+);
+// ==================== УРОК 6 ====================
+    {
+        title: 'Таблицы-массивы',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Храним много значений в одной переменной</h3>' +
+            '<p><b>Таблица</b> — главная и самая мощная структура данных в Lua. Она может работать как массив (список элементов по порядку). Создаётся с помощью фигурных скобок <code>{}</code>.</p>' +
+            '<p><b>КЛЮЧЕВОЕ ОТЛИЧИЕ LUA:</b> индексы в массивах начинаются с <b>1</b>, а не с 0 как в большинстве других языков! Это историческая особенность языка.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- Создаём таблицу-массив</span>\n<span class="kw">local</span> fruits = {<span class="str">"яблоко"</span>, <span class="str">"банан"</span>, <span class="str">"апельсин"</span>, <span class="str">"киви"</span>}\n\n<span class="cmt">-- Доступ по индексу (начинается с 1!)</span>\n<span class="func">print</span>(fruits[<span class="num">1</span>])   <span class="cmt">-- "яблоко"</span>\n<span class="func">print</span>(fruits[<span class="num">2</span>])   <span class="cmt">-- "банан"</span>\n<span class="func">print</span>(fruits[<span class="num">0</span>])   <span class="cmt">-- nil! В Lua нет индекса 0</span>\n\n<span class="cmt">-- Длина массива (оператор #)</span>\n<span class="func">print</span>(#fruits)     <span class="cmt">-- 4</span>\n\n<span class="cmt">-- Изменение элемента</span>\nfruits[<span class="num">2</span>] = <span class="str">"груша"</span>   <span class="cmt">-- заменили "банан" на "грушу"</span>\n\n<span class="cmt">-- Добавление в конец таблицы</span>\n<span class="func">table.insert</span>(fruits, <span class="str">"манго"</span>)  <span class="cmt">-- добавляет в конец</span>\n\n<span class="cmt">-- Добавление по индексу</span>\nfruits[<span class="num">5</span>] = <span class="str">"слива"</span>   <span class="cmt">-- тоже работает</span>\n\n<span class="cmt">-- Удаление элемента</span>\n<span class="func">table.remove</span>(fruits, <span class="num">2</span>)  <span class="cmt">-- удаляет элемент с индексом 2</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Построчный разбор:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><code>{}</code> — фигурные скобки создают таблицу. Элементы перечисляются через запятую.</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText"><code>fruits[1]</code> — доступ к элементу по индексу. <b>ЗАПОМНИ:</b> индексы с 1, не с 0! <code>fruits[0]</code> вернёт <b>nil</b>.</span></div>' +
+            '<div class="expLine"><span class="expNum">8</span><span class="expText"><code>#fruits</code> — знак решётки возвращает количество элементов в таблице-массиве.</span></div>' +
+            '<div class="expLine"><span class="expNum">14</span><span class="expText"><code>table.insert(таблица, значение)</code> — встроенная функция добавляет элемент в конец таблицы. После этого <b>#fruits</b> увеличится на 1.</span></div>' +
+            '<div class="expLine"><span class="expNum">20</span><span class="expText"><code>table.remove(таблица, индекс)</code> — удаляет элемент по указанному индексу. Остальные элементы сдвигаются.</span></div>' +
+            '</div>' +
+            '<div class="hintBox"><strong>⚠️ Индексы с 1:</strong> Это главное отличие Lua от Python, JavaScript, C++, Java. Если попытаешься обратиться к <code>fruits[0]</code> — получишь <b>nil</b>. Первый элемент всегда <code>fruits[1]</code>.</div>' +
+            '<div class="tipBox"><strong>💡 Совет:</strong> Используй <code>table.insert()</code> и <code>table.remove()</code> вместо прямой записи по индексу — они автоматически управляют размерами таблицы и сдвигают элементы.</div>',
+        taskTitle: '📝 Задание 6: Список покупок',
+        taskDesc: 'Создай таблицу "shop" с 4 продуктами (например: хлеб, молоко, яйца, сыр). Выведи: первый элемент, последний элемент (используй # для индекса последнего), и общее количество элементов через #.',
+        criteria: ['Таблица с 4 элементами', 'Вывод первого элемента (shop[1])', 'Вывод последнего (shop[#shop])', 'Вывод общего количества (#shop)'],
+        starter: '-- Создай таблицу shop с четырьмя продуктами\n-- Выведи первый, последний и общее количество\n-- Последний: shop[#shop]\n',
+        checks: [{ t: 'code', v: '{', msg: 'Нужна таблица (фигурные скобки)' }, { t: 'code', v: '#', msg: 'Нужен оператор # для получения длины' }]
+    },
+
+    // ==================== УРОК 7 ====================
+    {
+        title: 'Таблицы-словари (ключ-значение)',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Ключ → значение (как мини-база данных)</h3>' +
+            '<p>Таблицы в Lua могут работать не только как списки, но и как <b>словари</b> — хранить пары «ключ = значение». Это как картотека: по имени (ключу) находишь нужные данные (значение).</p>' +
+            '<div class="codeBlock"><span class="cmt">-- Создаём таблицу-словарь</span>\n<span class="kw">local</span> player = {\n    name = <span class="str">"Alex"</span>,      <span class="cmt">-- ключ "name", значение "Alex"</span>\n    hp = <span class="num">100</span>,          <span class="cmt">-- ключ "hp", значение 100</span>\n    level = <span class="num">5</span>,         <span class="cmt">-- ключ "level", значение 5</span>\n    isAlive = <span class="bool">true</span>    <span class="cmt">-- ключ "isAlive", значение true</span>\n}\n\n<span class="cmt">-- Доступ через точку (удобно когда ключ — одно слово)</span>\n<span class="func">print</span>(player.name)   <span class="cmt">-- "Alex"</span>\n<span class="func">print</span>(player.hp)     <span class="cmt">-- 100</span>\n\n<span class="cmt">-- Доступ через квадратные скобки (обязательно если ключ с пробелами)</span>\n<span class="func">print</span>(player[<span class="str">"hp"</span>])  <span class="cmt">-- 100 (тот же результат что и player.hp)</span>\n\n<span class="cmt">-- Добавление нового поля (просто присваиваем)</span>\nplayer.gold = <span class="num">50</span>\n\n<span class="cmt">-- Изменение существующего поля</span>\nplayer.hp = player.hp - <span class="num">10</span>  <span class="cmt">-- уменьшили здоровье</span>\n\n<span class="cmt">-- Перебор всех ключей и значений (pairs)</span>\n<span class="kw">for</span> key, value <span class="kw">in</span> <span class="func">pairs</span>(player) <span class="kw">do</span>\n    <span class="func">print</span>(key .. <span class="str">" = "</span> .. value)\n<span class="kw">end</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Разбор:</div>' +
+            '<div class="expLine"><span class="expNum">1-6</span><span class="expText">Создание словаря: внутри <code>{}</code> пишем <code>ключ = значение</code> через запятую. Lua автоматически понимает что это словарь.</span></div>' +
+            '<div class="expLine"><span class="expNum">9</span><span class="expText"><code>player.name</code> — доступ через точку. Самый простой и читаемый способ.</span></div>' +
+            '<div class="expLine"><span class="expNum">12</span><span class="expText"><code>player["hp"]</code> — доступ через строку в скобках. Нужен когда ключ содержит пробелы или спецсимволы.</span></div>' +
+            '<div class="expLine"><span class="expNum">15</span><span class="expText"><code>player.gold = 50</code> — чтобы добавить новое поле, просто присвой значение по новому ключу. Таблица автоматически расширится.</span></div>' +
+            '<div class="expLine"><span class="expNum">21</span><span class="expText"><code>pairs()</code> — перебирает ВСЕ пары ключ-значение в таблице (в отличие от <code>ipairs</code> который только по числовым индексам).</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>💡 Когда использовать точку, а когда скобки:</strong> Точка (<code>player.name</code>) — когда ключ это простое слово без пробелов. Скобки (<code>player["max hp"]</code>) — когда ключ содержит пробелы, спецсимволы или хранится в переменной.</div>',
+        taskTitle: '📝 Задание 7: Создай персонажа',
+        taskDesc: 'Создай таблицу-словарь "char" с полями: name (строка, имя персонажа), hp (число, здоровье), mana (число, мана). Выведи одной строкой в формате: «[name]: HP=[hp], Mana=[mana]» (например: «Маг: HP=80, Mana=120»).',
+        criteria: ['Таблица-словарь с {}', 'Поля name, hp, mana', 'Вывод в правильном формате'],
+        starter: '-- Создай таблицу char с полями name, hp, mana\n-- Выведи информацию о персонаже в нужном формате\n-- Пример: print(char.name .. ": HP=" .. char.hp .. ", Mana=" .. char.mana)\n',
+        checks: [{ t: 'code', v: '{', msg: 'Нужна таблица (фигурные скобки)' }, { t: 'out', v: 'HP=', msg: 'Вывод должен содержать "HP="' }, { t: 'out', v: 'Mana=', msg: 'Вывод должен содержать "Mana="' }]
+    },
+
+    // ==================== УРОК 8 ====================
+    {
+        title: 'Функции (создание и вызов)',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Функция — блок кода, который можно вызывать много раз</h3>' +
+            '<p><b>Функция</b> — это именованный кусок кода, который можно вызвать из любого места программы. Один раз написал — используешь сколько угодно раз с разными параметрами. Это экономит кучу времени и делает код чистым.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- Создание (объявление) функции</span>\n<span class="kw">function</span> <span class="func">sayHello</span>(name)\n    <span class="func">print</span>(<span class="str">"Привет, "</span> .. name .. <span class="str">"!"</span>)\n<span class="kw">end</span>\n\n<span class="cmt">-- Вызов функции с разными параметрами</span>\n<span class="func">sayHello</span>(<span class="str">"Алекс"</span>)  <span class="cmt">-- "Привет, Алекс!"</span>\n<span class="func">sayHello</span>(<span class="str">"Маша"</span>)   <span class="cmt">-- "Привет, Маша!"</span>\n\n<span class="cmt">-- Функция с возвратом значения через return</span>\n<span class="kw">function</span> <span class="func">sum</span>(a, b)\n    <span class="kw">return</span> a + b\n<span class="kw">end</span>\n\n<span class="kw">local</span> result = <span class="func">sum</span>(<span class="num">5</span>, <span class="num">3</span>)  <span class="cmt">-- сохраняем результат в переменную</span>\n<span class="func">print</span>(result)              <span class="cmt">-- 8</span>\n\n<span class="cmt">-- Функция без параметров</span>\n<span class="kw">function</span> <span class="func">getVersion</span>()\n    <span class="kw">return</span> <span class="str">"1.0.0"</span>\n<span class="kw">end</span>\n\n<span class="func">print</span>(<span class="func">getVersion</span>())  <span class="cmt">-- "1.0.0"</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Разбор:</div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><code>function sayHello(name)</code> — <b>function</b> — ключевое слово начала функции. <b>sayHello</b> — имя функции. <b>(name)</b> — параметр (то что передаётся внутрь функции при вызове).</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText">Тело функции — код который выполнится при каждом вызове. Здесь используем параметр <b>name</b>.</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText"><code>end</code> — конец функции. Обязательно закрывать!</span></div>' +
+            '<div class="expLine"><span class="expNum">11</span><span class="expText"><code>return a + b</code> — <b>return</b> возвращает значение ИЗ функции обратно в место вызова. После return функция сразу завершается.</span></div>' +
+            '<div class="expLine"><span class="expNum">14</span><span class="expText"><code>local result = sum(5, 3)</code> — результат функции можно сохранить в переменную.</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>💡 Функции — основа хорошего кода:</strong> Если какой-то код повторяется больше двух раз — выноси его в функцию. Это делает программу короче, понятнее и легче в исправлении ошибок.</div>' +
+            '<div class="hintBox"><strong>⚠️ Параметры и аргументы:</strong> Параметр — переменная в объявлении функции <code>function f(x)</code>. Аргумент — значение при вызове <code>f(5)</code>. Если передать меньше аргументов чем параметров — лишние будут <b>nil</b>. Если больше — лишние игнорируются.</div>',
+        taskTitle: '📝 Задание 8: Функция умножения',
+        taskDesc: 'Создай функцию multiply(a, b), которая возвращает a * b (умножение). Вызови её с числами 6 и 7 и выведи результат через print().',
+        criteria: ['Объявлена function', 'Использован return', 'Умножение a * b', 'Вызов с числами 6 и 7', 'Вывод результата'],
+        starter: '-- Создай функцию multiply(a, b)\n-- Она должна возвращать a * b\n-- Вызови её с 6 и 7 и выведи результат\n',
+        checks: [{ t: 'kw', kw: 'function', min: 1, msg: 'Нужно объявить function' }, { t: 'kw', kw: 'return', min: 1, msg: 'Нужен return для возврата значения' }, { t: 'out', v: '42', msg: '6×7=42, проверь что вывод правильный' }]
+    },
+
+    // ==================== УРОК 9 ====================
+    {
+        title: 'Перебор таблиц: ipairs и pairs',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Проходим по всем элементам таблицы</h3>' +
+            '<p>Для перебора таблиц в Lua есть две функции: <code>ipairs()</code> — для массивов (числовые индексы по порядку), и <code>pairs()</code> — для словарей (все ключи в любом порядке).</p>' +
+            '<div class="codeBlock"><span class="kw">local</span> items = {<span class="str">"меч"</span>, <span class="str">"щит"</span>, <span class="str">"зелье"</span>}\n\n<span class="cmt">-- ipairs: перебор ТОЛЬКО по числовым индексам (1, 2, 3...)</span>\n<span class="func">print</span>(<span class="str">"=== Инвентарь ==="</span>)\n<span class="kw">for</span> index, value <span class="kw">in</span> <span class="func">ipairs</span>(items) <span class="kw">do</span>\n    <span class="func">print</span>(index .. <span class="str">". "</span> .. value)\n<span class="kw">end</span>\n<span class="cmt">-- 1. меч</span>\n<span class="cmt">-- 2. щит</span>\n<span class="cmt">-- 3. зелье</span>\n\n<span class="cmt">-- pairs: перебор ВСЕХ ключей (для словарей)</span>\n<span class="kw">local</span> player = {name = <span class="str">"Alex"</span>, hp = <span class="num">100</span>, mana = <span class="num">50</span>}\n\n<span class="func">print</span>(<span class="str">"=== Характеристики ==="</span>)\n<span class="kw">for</span> key, value <span class="kw">in</span> <span class="func">pairs</span>(player) <span class="kw">do</span>\n    <span class="func">print</span>(key .. <span class="str">" = "</span> .. value)\n<span class="kw">end</span>\n<span class="cmt">-- name = Alex</span>\n<span class="cmt">-- hp = 100</span>\n<span class="cmt">-- mana = 50</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Разница между ipairs и pairs:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><b>ipairs</b> — перебирает ТОЛЬКО числовые индексы (1, 2, 3...) и останавливается на первом nil. Порядок гарантирован. Используй для массивов-списков.</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><b>pairs</b> — перебирает ВСЕ ключи (и числовые и строковые). Порядок НЕ гарантирован — ключи могут идти в любом порядке. Используй для словарей.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText">Синтаксис одинаковый: <code>for ключ, значение in функция(таблица) do ... end</code></span></div>' +
+            '</div>' +
+            '<div class="hintBox"><strong>⚠️ Важно:</strong> ipairs пропускает ключи которые не являются последовательными числами. Если в таблице есть "дырки" (например индексы 1, 2, 5), ipairs дойдёт только до 2 и остановится. Используй pairs если нужны все элементы.</div>',
+        taskTitle: '📝 Задание 9: Инвентарь',
+        taskDesc: 'Создай таблицу "inv" с тремя любыми предметами (например: "факел", "верёвка", "ключ"). Используй ipairs чтобы вывести каждый предмет на новой строке с номером (например: «1. факел»).',
+        criteria: ['Таблица из 3 элементов', 'Использован ipairs', 'Вывод с нумерацией (1. предмет)'],
+        starter: '-- Создай таблицу inv с тремя предметами\n-- Используй ipairs для перебора и вывода с номерами\n',
+        checks: [{ t: 'code', v: 'ipairs', msg: 'Нужен ipairs для перебора массива' }, { t: 'out', v: '.', msg: 'Вывод должен содержать точку после номера (например "1. факел")' }]
+    },
+
+    // ==================== УРОК 10 ====================
+    {
+        title: 'Строковые методы',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Работа с текстом: поиск, замена, извлечение</h3>' +
+            '<p>В Lua строки — это объекты со встроенными методами. Методы вызываются через двоеточие <code>:</code> (например <code>s:upper()</code>).</p>' +
+            '<div class="codeBlock"><span class="kw">local</span> s = <span class="str">"Привет, мир!"</span>\n\n<span class="cmt">-- Длина строки (оператор #)</span>\n<span class="func">print</span>(#s)              <span class="cmt">-- 12 символов</span>\n\n<span class="cmt">-- Регистр</span>\n<span class="func">print</span>(s:<span class="func">upper</span>())       <span class="cmt">-- "ПРИВЕТ, МИР!" (все заглавные)</span>\n<span class="func">print</span>(s:<span class="func">lower</span>())       <span class="cmt">-- "привет, мир!" (все строчные)</span>\n\n<span class="cmt">-- Поиск подстроки</span>\n<span class="func">print</span>(s:<span class="func">find</span>(<span class="str">"мир"</span>))   <span class="cmt">-- 9 (позиция начала, nil если не найдено)</span>\n\n<span class="cmt">-- Извлечение подстроки</span>\n<span class="func">print</span>(s:<span class="func">sub</span>(<span class="num">1</span>, <span class="num">6</span>))     <span class="cmt">-- "Привет" (символы с 1 по 6)</span>\n\n<span class="cmt">-- Замена (gsub = global substitute)</span>\n<span class="func">print</span>(s:<span class="func">gsub</span>(<span class="str">"мир"</span>, <span class="str">"Lua"</span>)) <span class="cmt">-- "Привет, Lua!"</span>\n\n<span class="cmt">-- Повтор строки</span>\n<span class="func">print</span>(<span class="str">"Ha"</span>:<span class="func">rep</span>(<span class="num">3</span>))     <span class="cmt">-- "HaHaHa"</span>\n\n<span class="cmt">-- Удаление пробелов по краям</span>\n<span class="kw">local</span> s2 = <span class="str">"  текст с пробелами  "</span>\n<span class="func">print</span>(s2:<span class="func">match</span>(<span class="str">"^%s*(.-)%s*$"</span>))  <span class="cmt">-- "текст с пробелами"</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Разбор методов:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><code>#s</code> — оператор решётка для строк возвращает длину в байтах (для английского текста = количество символов).</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><code>:upper()</code> / <code>:lower()</code> — меняют регистр всей строки.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText"><code>:find(что)</code> — ищет подстроку. Возвращает позицию начала и конца, или <b>nil</b> если не найдено.</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText"><code>:sub(от, до)</code> — вырезает кусок строки. Индексы с 1. Если не указать "до" — возьмёт до конца строки.</span></div>' +
+            '<div class="expLine"><span class="expNum">5</span><span class="expText"><code>:gsub(что, на_что)</code> — заменяет ВСЕ вхождения. Буква <b>g</b> означает global (глобально, везде). Возвращает новую строку и количество замен.</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>💡 Двоеточие vs точка:</strong> <code>s:upper()</code> — это сокращение для <code>string.upper(s)</code>. Двоеточие автоматически передаёт строку как первый аргумент. Используй двоеточие — так короче и читаемее.</div>',
+        taskTitle: '📝 Задание 10: Обработка строки',
+        taskDesc: 'Создай строку s = "Lua это круто". Выведи: 1) длину строки, 2) строку в верхнем регистре (upper), 3) строку с заменой слова "круто" на "супер" (gsub).',
+        criteria: ['Создана строка s', 'Вывод длины (#)', 'Вывод upper()', 'Замена через gsub()'],
+        starter: '-- Создай строку s = "Lua это круто"\n-- Выведи длину, верхний регистр и результат замены\n',
+        checks: [{ t: 'out', v: 'LUA', msg: 'Должен быть вывод в верхнем регистре (LUA)' }, { t: 'out', v: 'супер', msg: 'Должна произойти замена "круто" на "супер"' }]
+    }
+);
+// ==================== УРОК 11 ====================
+    {
+        title: 'Модули (require)',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Разделяем код по файлам</h3>' +
+            '<p><b>Модуль</b> — это отдельный Lua-файл с кодом, который можно подключить в другой файл через функцию <code>require()</code>. Это позволяет организовать большой проект: разделить код на логические части (математика, игрок, враги, интерфейс).</p>' +
+            '<p>Модуль — это обычный Lua-файл, который <b>возвращает таблицу</b> с функциями и данными. Все переменные внутри модуля — локальные и не видны снаружи, пока ты их не добавишь в возвращаемую таблицу.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- ========================================</span>\n<span class="cmt">-- Файл: math_utils.lua (МОДУЛЬ)</span>\n<span class="cmt">-- ========================================</span>\n<span class="kw">local</span> M = {}  <span class="cmt">-- создаём пустую таблицу для экспорта</span>\n\n<span class="cmt">-- Добавляем функции в таблицу</span>\n<span class="kw">function</span> M.<span class="func">add</span>(a, b)\n    <span class="kw">return</span> a + b\n<span class="kw">end</span>\n\n<span class="kw">function</span> M.<span class="func">sub</span>(a, b)\n    <span class="kw">return</span> a - b\n<span class="kw">end</span>\n\n<span class="kw">function</span> M.<span class="func">mul</span>(a, b)\n    <span class="kw">return</span> a * b\n<span class="kw">end</span>\n\n<span class="kw">return</span> M  <span class="cmt">-- ОБЯЗАТЕЛЬНО возвращаем таблицу</span>\n\n<span class="cmt">-- ========================================</span>\n<span class="cmt">-- Файл: main.lua (ОСНОВНАЯ ПРОГРАММА)</span>\n<span class="cmt">-- ========================================</span>\n<span class="kw">local</span> utils = <span class="func">require</span>(<span class="str">"math_utils"</span>)  <span class="cmt">-- подключаем модуль</span>\n\n<span class="func">print</span>(utils.<span class="func">add</span>(<span class="num">2</span>, <span class="num">3</span>))   <span class="cmt">-- 5</span>\n<span class="func">print</span>(utils.<span class="func">sub</span>(<span class="num">10</span>, <span class="num">4</span>))  <span class="cmt">-- 6</span>\n<span class="func">print</span>(utils.<span class="func">mul</span>(<span class="num">3</span>, <span class="num">7</span>))   <span class="cmt">-- 21</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Как работает модуль:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText">Создаём локальную таблицу (обычно называют <b>M</b> или по имени модуля). Все публичные функции и данные будут внутри неё.</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText">Добавляем функции в таблицу через точку: <code>M.add = function() ... end</code>. Это делает функцию доступной снаружи модуля.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText">В конце файла обязательно <code>return M</code> — возвращаем таблицу. Без этого <b>require()</b> ничего не получит.</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText">В другом файле: <code>local модуль = require("имя_файла")</code> — получаем таблицу и можем использовать все её функции.</span></div>' +
+            '</div>' +
+            '<div class="hintBox"><strong>⚠️ Важно:</strong> <code>require()</code> выполняет файл только ОДИН раз и кеширует результат. При повторном вызове возвращается тот же объект (не создаётся заново). Имя файла пишется БЕЗ расширения .lua.</div>' +
+            '<div class="tipBox"><strong>💡 Совет:</strong> В больших проектах модули раскладывают по папкам. Тогда используют путь через точку: <code>require("папка.модуль")</code>. Это позволяет держать код организованным.</div>',
+        taskTitle: '📝 Задание 11: Создай модуль',
+        taskDesc: 'Напиши код модуля (как будто ты в файле модуля): создай локальную таблицу M, добавь в неё функцию double(x), которая возвращает x * 2, и верни M через return.',
+        criteria: ['Локальная таблица M', 'Функция double(x)', 'return M'],
+        starter: '-- Создай локальную таблицу M\n-- Добавь функцию double(x) которая возвращает x * 2\n-- Верни M через return\n',
+        checks: [{ t: 'kw', kw: 'function', min: 1, msg: 'Нужна функция double' }, { t: 'kw', kw: 'return', min: 1, msg: 'Нужен return для возврата таблицы M' }]
+    },
+
+    // ==================== УРОК 12 ====================
+    {
+        title: 'Обработка ошибок (pcall)',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Ловим ошибки без падения программы</h3>' +
+            '<p><code>pcall()</code> (protected call — «защищённый вызов») оборачивает вызов функции и перехватывает ошибку. Программа не крашится, даже если внутри функции произошла ошибка. Это как подушка безопасности в автомобиле.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- Функция которая может вызвать ошибку</span>\n<span class="kw">local</span> <span class="kw">function</span> <span class="func">danger</span>(x)\n    <span class="kw">if</span> x == <span class="num">0</span> <span class="kw">then</span>\n        <span class="func">error</span>(<span class="str">"Деление на ноль невозможно!"</span>)\n    <span class="kw">end</span>\n    <span class="kw">return</span> <span class="num">100</span> / x\n<span class="kw">end</span>\n\n<span class="cmt">-- Обычный вызов — КРАШНЕТ программу:</span>\n<span class="cmt">-- danger(0)  -- ОШИБКА! Программа остановится</span>\n\n<span class="cmt">-- Защищённый вызов через pcall</span>\n<span class="kw">local</span> ok, result = <span class="func">pcall</span>(danger, <span class="num">0</span>)\n\n<span class="kw">if</span> ok <span class="kw">then</span>\n    <span class="func">print</span>(<span class="str">"Результат: "</span> .. result)\n<span class="kw">else</span>\n    <span class="func">print</span>(<span class="str">"Ошибка перехвачена: "</span> .. result)\n<span class="kw">end</span>\n\n<span class="cmt">-- Успешный вызов (без ошибки)</span>\n<span class="kw">local</span> ok2, res2 = <span class="func">pcall</span>(danger, <span class="num">5</span>)\n<span class="func">print</span>(ok2, res2)  <span class="cmt">-- true   20</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Разбор:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><code>error("сообщение")</code> — функция которая вызывает ошибку с указанным текстом. Программа останавливается.</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><code>pcall(функция, аргументы...)</code> — возвращает ДВА значения: <b>ok</b> (true — успешно, false — ошибка) и <b>result</b> (результат функции ИЛИ текст ошибки).</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText">Всегда проверяй <b>ok</b> перед использованием <b>result</b>! Если ok == false, то result содержит сообщение об ошибке, а не результат.</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>💡 Когда использовать pcall:</strong> При работе с файлами (вдруг файл не существует), с сетью (вдруг нет соединения), с пользовательским вводом (вдруг ввёл не число), с делением (вдруг деление на ноль).</div>',
+        taskTitle: '📝 Задание 12: Безопасный вызов',
+        taskDesc: 'Создай функцию risky(x): если x < 0 — вызови error("Отрицательное число!"), иначе верни x * 2. Оберни вызов risky(-5) в pcall. Если ошибка — выведи «Ошибка перехвачена», если нет — выведи результат.',
+        criteria: ['Функция risky с проверкой', 'Использован pcall', 'Проверка ok', 'Вывод сообщения об ошибке'],
+        starter: '-- Создай функцию risky(x)\n-- Если x < 0 — error()\n-- Оберни вызов risky(-5) в pcall\n-- Проверь ok и выведи результат\n',
+        checks: [{ t: 'code', v: 'pcall', msg: 'Нужен pcall для защищённого вызова' }, { t: 'out', v: 'Ошибка перехвачена', msg: 'Должно вывестись «Ошибка перехвачена»' }]
+    },
+
+    // ==================== УРОК 13 ====================
+    {
+        title: 'Замыкания (closures)',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Функция с памятью</h3>' +
+            '<p><b>Замыкание</b> — это функция внутри другой функции, которая «запоминает» локальные переменные внешней функции. Даже после того как внешняя функция завершилась, внутренняя продолжает иметь доступ к её переменным. Это как рюкзак с вещами — функция носит свои переменные с собой.</p>' +
+            '<div class="codeBlock"><span class="kw">function</span> <span class="func">createCounter</span>()\n    <span class="kw">local</span> count = <span class="num">0</span>  <span class="cmt">-- эта переменная "захватывается" замыканием</span>\n    <span class="kw">return</span> <span class="kw">function</span>()\n        count = count + <span class="num">1</span>\n        <span class="kw">return</span> count\n    <span class="kw">end</span>\n<span class="kw">end</span>\n\n<span class="kw">local</span> c1 = <span class="func">createCounter</span>()\n<span class="func">print</span>(<span class="func">c1</span>())  <span class="cmt">-- 1</span>\n<span class="func">print</span>(<span class="func">c1</span>())  <span class="cmt">-- 2</span>\n<span class="func">print</span>(<span class="func">c1</span>())  <span class="cmt">-- 3</span>\n\n<span class="cmt">-- Каждый счётчик независим!</span>\n<span class="kw">local</span> c2 = <span class="func">createCounter</span>()\n<span class="func">print</span>(<span class="func">c2</span>())  <span class="cmt">-- 1 (начинает заново!)</span>\n<span class="func">print</span>(<span class="func">c1</span>())  <span class="cmt">-- 4 (c1 продолжает свой счёт)</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Магия замыкания:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText">Внешняя функция <b>createCounter</b> создаёт локальную переменную <b>count</b> и возвращает внутреннюю функцию.</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText">Внутренняя функция имеет доступ к <b>count</b> даже после того как createCounter завершилась! Переменная не удаляется сборщиком мусора пока существует замыкание.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText">Каждый вызов <b>createCounter()</b> создаёт НОВУЮ переменную count. Поэтому c1 и c2 считают независимо друг от друга.</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>💡 Применение замыканий:</strong> Счётчики и генераторы, создание уникальных ID, сохранение состояния без глобальных переменных, callback-функции с дополнительными данными, создание объектов с приватными полями.</div>',
+        taskTitle: '📝 Задание 13: Фабрика счётчиков',
+        taskDesc: 'Создай функцию factory(), которая возвращает счётчик (начинает с 0, каждый вызов увеличивает на 1 и возвращает новое значение). Создай один счётчик и вызови его 3 раза, выводя результат каждого вызова.',
+        criteria: ['Внешняя функция factory', 'Внутренняя функция (замыкание)', 'Счётчик увеличивается', 'Вызван 3 раза'],
+        starter: '-- Создай функцию factory()\n-- Внутри создай n = 0\n-- Верни функцию, которая увеличивает n и возвращает его\n-- Создай счётчик и вызови 3 раза\n',
+        checks: [{ t: 'kw', kw: 'function', min: 2, msg: 'Нужна внешняя и внутренняя функция (замыкание)' }, { t: 'out', v: '1', msg: 'Первый вызов должен дать 1' }, { t: 'out', v: '3', msg: 'Третий вызов должен дать 3' }]
+    },
+
+    // ==================== УРОК 14 ====================
+    {
+        title: 'Метатаблицы (основы)',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Магия таблиц: переопределяем поведение</h3>' +
+            '<p><b>Метатаблица</b> — это обычная таблица, которая «навешивается» на другую таблицу и меняет её поведение: сложение, вычитание, сравнение, вывод и многое другое. Через метатаблицы Lua получает возможность объектно-ориентированного программирования.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- Две обычные таблицы с числовым полем value</span>\n<span class="kw">local</span> t1 = {value = <span class="num">10</span>}\n<span class="kw">local</span> t2 = {value = <span class="num">20</span>}\n\n<span class="cmt">-- Метатаблица с методом __add (сложение)</span>\n<span class="kw">local</span> mt = {\n    __add = <span class="kw">function</span>(a, b)\n        <span class="cmt">-- Эта функция вызывается когда делаем t1 + t2</span>\n        <span class="kw">return</span> {value = a.value + b.value}\n    <span class="kw">end</span>,\n    __tostring = <span class="kw">function</span>(t)\n        <span class="cmt">-- Вызывается при print(t) или tostring(t)</span>\n        <span class="kw">return</span> <span class="str">"Таблица со значением "</span> .. t.value\n    <span class="kw">end</span>\n}\n\n<span class="cmt">-- Применяем метатаблицу к обеим таблицам</span>\n<span class="func">setmetatable</span>(t1, mt)\n<span class="func">setmetatable</span>(t2, mt)\n\n<span class="cmt">-- Теперь t1 + t2 работает!</span>\n<span class="kw">local</span> t3 = t1 + t2\n<span class="func">print</span>(t3.value)  <span class="cmt">-- 30</span>\n<span class="func">print</span>(t1)        <span class="cmt">-- "Таблица со значением 10"</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Важнейшие метаметоды:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><code>__add(a, b)</code> — вызывается при <b>a + b</b>. Также есть <code>__sub</code> (-), <code>__mul</code> (*), <code>__div</code> (/), <code>__mod</code> (%), <code>__pow</code> (^).</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><code>__tostring(t)</code> — вызывается при <b>print(t)</b> или <b>tostring(t)</b>. Позволяет красиво выводить таблицу.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText"><code>__index</code> — что делать если ключ не найден в таблице. Часто используют для наследования.</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText"><code>__newindex</code> — вызывается при попытке записи нового поля в таблицу.</span></div>' +
+            '</div>' +
+            '<div class="hintBox"><strong>⚠️ Важно:</strong> <code>setmetatable(t, mt)</code> — присоединяет метатаблицу к таблице. <code>getmetatable(t)</code> — получает метатаблицу. У каждой таблицы может быть только ОДНА метатаблица.</div>',
+        taskTitle: '📝 Задание 14: Метатаблица со сложением',
+        taskDesc: 'Создай две таблицы a = {value = 5} и b = {value = 7}. Создай метатаблицу mt с __add, которая складывает поля value. Примени метатаблицу к обеим таблицам через setmetatable. Выведи (a + b).value.',
+        criteria: ['Таблицы a и b с value', 'Метатаблица с __add', 'setmetatable для обеих', 'Вывод (a+b).value = 12'],
+        starter: '-- Создай таблицы a и b с полем value\n-- Создай метатаблицу mt с __add\n-- Примени setmetatable к обеим\n-- Выведи (a + b).value\n',
+        checks: [{ t: 'code', v: 'setmetatable', msg: 'Нужен setmetatable' }, { t: 'code', v: '__add', msg: 'Нужен метаметод __add' }, { t: 'out', v: '12', msg: '5+7 должно дать 12' }]
+    },
+
+    // ==================== УРОК 15 ====================
+    {
+        title: 'Корутины (основы)',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Функции, которые можно ставить на паузу</h3>' +
+            '<p><b>Корутины</b> (coroutines) — это особый тип функций, выполнение которых можно приостановить и позже возобновить с того же места. В отличие от обычных функций, корутины «помнят» где они остановились и могут продолжать работу.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- Создаём корутину</span>\n<span class="kw">local</span> co = <span class="func">coroutine.create</span>(<span class="kw">function</span>()\n    <span class="func">print</span>(<span class="str">"Шаг 1: начало"</span>)\n    <span class="func">coroutine.yield</span>()  <span class="cmt">-- ПАУЗА: останавливаемся здесь</span>\n    <span class="func">print</span>(<span class="str">"Шаг 2: после паузы"</span>)\n    <span class="func">coroutine.yield</span>()  <span class="cmt">-- ещё одна пауза</span>\n    <span class="func">print</span>(<span class="str">"Шаг 3: финиш"</span>)\n<span class="kw">end</span>)\n\n<span class="func">print</span>(<span class="str">"-- Запускаем --"</span>)\n<span class="func">coroutine.resume</span>(co)  <span class="cmt">-- Шаг 1: начало (останавливается на yield)</span>\n<span class="func">print</span>(<span class="str">"-- Делаем что-то другое --"</span>)\n<span class="func">coroutine.resume</span>(co)  <span class="cmt">-- Шаг 2: после паузы</span>\n<span class="func">coroutine.resume</span>(co)  <span class="cmt">-- Шаг 3: финиш</span>\n<span class="func">print</span>(<span class="str">"-- Готово --"</span>)</div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Ключевые функции:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><code>coroutine.create(функция)</code> — создаёт корутину из функции, но НЕ запускает её. Возвращает объект корутины.</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><code>coroutine.resume(корутина)</code> — запускает или возобновляет корутину. Возвращает true + значения, или false + ошибку.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText"><code>coroutine.yield()</code> — приостанавливает корутину в текущем месте. При следующем resume выполнение продолжится с этой точки.</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText"><code>coroutine.status(co)</code> — возвращает состояние: "suspended" (на паузе), "running" (выполняется), "dead" (завершена).</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>💡 Применение корутин:</strong> Игровые циклы (обновление ИИ по частям), асинхронные операции, генераторы последовательностей, сложная пошаговая анимация, диалоговые системы.</div>',
+        taskTitle: '📝 Задание 15: Корутина с паузами',
+        taskDesc: 'Создай корутину, которая выводит "A", делает yield, выводит "B", делает yield, выводит "C". Затем трижды вызови coroutine.resume() для этой корутины.',
+        criteria: ['coroutine.create', 'Два yield внутри', 'Три вызова resume'],
+        starter: '-- Создай корутину через coroutine.create()\n-- Внутри: print("A"), yield(), print("B"), yield(), print("C")\n-- Трижды вызови resume\n',
+        checks: [{ t: 'code', v: 'coroutine', msg: 'Нужна работа с coroutine' }, { t: 'out', v: 'A', msg: 'Первый вывод должен быть A' }, { t: 'out', v: 'B', msg: 'Второй вывод — B' }, { t: 'out', v: 'C', msg: 'Третий вывод — C' }]
+    }
+);
+// ==================== УРОК 16 ====================
+    {
+        title: 'Работа с датой и временем (os)',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Время в Lua</h3>' +
+            '<p>Модуль <code>os</code> даёт доступ к системным часам компьютера. Можно узнать текущее время, дату, измерить сколько времени заняла операция.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- os.time() — unixtime (секунды с 1 января 1970 года)</span>\n<span class="kw">local</span> now = <span class="func">os.time</span>()\n<span class="func">print</span>(now)  <span class="cmt">-- например: 1718400000 (большое число)</span>\n\n<span class="cmt">-- os.date() — форматированная дата и время</span>\n<span class="func">print</span>(<span class="func">os.date</span>(<span class="str">"%H:%M:%S"</span>))    <span class="cmt">-- "14:30:05" (часы:минуты:секунды)</span>\n<span class="func">print</span>(<span class="func">os.date</span>(<span class="str">"%d.%m.%Y"</span>))    <span class="cmt">-- "15.06.2026" (день.месяц.год)</span>\n<span class="func">print</span>(<span class="func">os.date</span>(<span class="str">"%A, %d %B"</span>))  <span class="cmt">-- "Sunday, 15 June" (день недели, дата, месяц)</span>\n\n<span class="cmt">-- os.clock() — секунды с запуска программы (для замеров скорости)</span>\n<span class="kw">local</span> t1 = <span class="func">os.clock</span>()\n<span class="kw">for</span> i = <span class="num">1</span>, <span class="num">1000000</span> <span class="kw">do</span> <span class="kw">end</span>  <span class="cmt">-- цикл для нагрузки (пустой)</span>\n<span class="kw">local</span> t2 = <span class="func">os.clock</span>()\n<span class="func">print</span>(<span class="str">"Цикл занял: "</span> .. (t2 - t1) .. <span class="str">" секунд"</span>)\n\n<span class="cmt">-- os.difftime() — разница в секундах между двумя unixtime</span>\n<span class="kw">local</span> past = <span class="func">os.time</span>({year=<span class="num">2020</span>, month=<span class="num">1</span>, day=<span class="num">1</span>})\n<span class="func">print</span>(<span class="func">os.difftime</span>(now, past))  <span class="cmt">-- сколько секунд прошло с начала 2020 года</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Форматы для os.date():</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><code>%H</code> — часы (00-23), <code>%M</code> — минуты (00-59), <code>%S</code> — секунды (00-59).</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><code>%d</code> — день месяца (01-31), <code>%m</code> — месяц числом (01-12), <code>%Y</code> — год (4 цифры).</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText"><code>%A</code> — полное название дня недели, <code>%B</code> — полное название месяца.</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText"><code>os.clock()</code> — возвращает секунды в виде дробного числа (например 1.234567). Идеально для измерения производительности.</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>💡 Совет:</strong> Используй <code>os.clock()</code> для измерения скорости кода, а <code>os.time()</code> для работы с реальными датами. Это две разные вещи — не путай их!</div>',
+        taskTitle: '📝 Задание 16: Измерение времени',
+        taskDesc: 'Засеки время ДО и ПОСЛЕ цикла из 1000000 итераций (for i=1,1000000 do end). Выведи разницу во времени с подписью «Заняло: X сек». Используй os.clock().',
+        criteria: ['os.clock() до цикла', 'Цикл на 1000000 итераций', 'os.clock() после цикла', 'Вывод разницы с подписью'],
+        starter: '-- Засеки время через os.clock() до цикла\n-- Сделай цикл for от 1 до 1000000\n-- Засеки время после и выведи разницу\n',
+        checks: [{ t: 'code', v: 'os.clock', msg: 'Нужен os.clock()' }, { t: 'out', v: 'сек', msg: 'Вывод должен содержать слово "сек"' }]
+    },
+
+    // ==================== УРОК 17 ====================
+    {
+        title: 'Рекурсия',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Функция, которая вызывает саму себя</h3>' +
+            '<p><b>Рекурсия</b> — это приём программирования, когда функция внутри своего тела вызывает саму себя. Это элегантный способ решения задач которые можно разбить на одинаковые подзадачи: вычисление факториала, обход дерева, поиск в глубину.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- Факториал: n! = n × (n-1) × (n-2) × ... × 1</span>\n<span class="cmt">-- 5! = 5 × 4 × 3 × 2 × 1 = 120</span>\n\n<span class="kw">function</span> <span class="func">factorial</span>(n)\n    <span class="cmt">-- БАЗОВЫЙ СЛУЧАЙ: условие выхода из рекурсии</span>\n    <span class="cmt">-- Без этого рекурсия будет бесконечной!</span>\n    <span class="kw">if</span> n <= <span class="num">1</span> <span class="kw">then</span>\n        <span class="kw">return</span> <span class="num">1</span>\n    <span class="kw">end</span>\n    <span class="cmt">-- РЕКУРСИВНЫЙ СЛУЧАЙ: вызываем себя с n-1</span>\n    <span class="kw">return</span> n * <span class="func">factorial</span>(n - <span class="num">1</span>)\n<span class="kw">end</span>\n\n<span class="func">print</span>(<span class="func">factorial</span>(<span class="num">5</span>))  <span class="cmt">-- 120</span>\n<span class="func">print</span>(<span class="func">factorial</span>(<span class="num">6</span>))  <span class="cmt">-- 720</span>\n\n<span class="cmt">-- Как это работает для factorial(3):</span>\n<span class="cmt">-- factorial(3) = 3 * factorial(2)</span>\n<span class="cmt">-- factorial(2) = 2 * factorial(1)</span>\n<span class="cmt">-- factorial(1) = 1 (базовый случай!)</span>\n<span class="cmt">-- Поднимаемся обратно: 2*1=2, 3*2=6</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Два обязательных компонента рекурсии:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><b>Базовый случай</b> (base case) — условие при котором рекурсия ОСТАНАВЛИВАЕТСЯ. Без него функция будет вызывать себя бесконечно → ошибка переполнения стека.</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><b>Рекурсивный случай</b> — вызов себя же но с другими аргументами (обычно приближающимися к базовому случаю, например n-1).</span></div>' +
+            '</div>' +
+            '<div class="hintBox"><strong>⚠️ Осторожно — ограничение глубины:</strong> Lua имеет ограничение на глубину рекурсии (около 200-300 вызовов). Слишком глубокая рекурсия вызовет ошибку "stack overflow". Для больших данных используй циклы вместо рекурсии.</div>' +
+            '<div class="tipBox"><strong>💡 Когда использовать рекурсию:</strong> Обход дерева (папки на диске), поиск в лабиринте, вычисление чисел Фибоначчи, разбор вложенных структур данных (JSON, XML).</div>',
+        taskTitle: '📝 Задание 17: Рекурсивный факториал',
+        taskDesc: 'Напиши рекурсивную функцию factorial(n), которая возвращает n! (факториал). Вызови её для n=6 и выведи результат (должно быть 720). Не забудь базовый случай!',
+        criteria: ['Функция factorial', 'Базовый случай (n <= 1)', 'Рекурсивный вызов factorial(n-1)', 'Вывод 720'],
+        starter: '-- Напиши функцию factorial(n)\n-- Базовый случай: если n <= 1 вернуть 1\n-- Иначе: вернуть n * factorial(n - 1)\n-- Выведи factorial(6)\n',
+        checks: [{ t: 'kw', kw: 'function', min: 1, msg: 'Нужна функция' }, { t: 'out', v: '720', msg: '6! должно дать 720' }]
+    },
+
+    // ==================== УРОК 18 ====================
+    {
+        title: 'Сортировка таблиц (table.sort)',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Упорядочиваем данные</h3>' +
+            '<p><code>table.sort()</code> сортирует элементы таблицы-массива на месте (меняет исходную таблицу). По умолчанию сортирует по возрастанию. Можно передать свою функцию сравнения для любого порядка.</p>' +
+            '<div class="codeBlock"><span class="kw">local</span> nums = {<span class="num">5</span>, <span class="num">2</span>, <span class="num">8</span>, <span class="num">1</span>, <span class="num">9</span>}\n\n<span class="cmt">-- Сортировка по возрастанию (по умолчанию)</span>\n<span class="func">table.sort</span>(nums)\n<span class="cmt">-- nums теперь: {1, 2, 5, 8, 9}</span>\n\n<span class="cmt">-- Сортировка по убыванию (своя функция сравнения)</span>\n<span class="func">table.sort</span>(nums, <span class="kw">function</span>(a, b)\n    <span class="kw">return</span> a > b  <span class="cmt">-- если a > b, то a идёт раньше b</span>\n<span class="kw">end</span>)\n<span class="cmt">-- nums теперь: {9, 8, 5, 2, 1}</span>\n\n<span class="cmt">-- Сортировка таблиц-словарей по полю (например, по очкам)</span>\n<span class="kw">local</span> players = {\n    {name = <span class="str">"Alex"</span>, score = <span class="num">150</span>},\n    {name = <span class="str">"Masha"</span>, score = <span class="num">300</span>},\n    {name = <span class="str">"Oleg"</span>, score = <span class="num">80</span>}\n}\n\n<span class="func">table.sort</span>(players, <span class="kw">function</span>(a, b)\n    <span class="kw">return</span> a.score > b.score  <span class="cmt">-- сортируем по очкам (по убыванию)</span>\n<span class="kw">end</span>)\n<span class="cmt">-- Masha (300), Alex (150), Oleg (80)</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Как работает функция сравнения:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText">Функция сравнения получает два элемента: <b>a</b> и <b>b</b>.</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText">Если функция возвращает <b>true</b> — элемент <b>a</b> будет стоять РАНЬШЕ элемента <b>b</b>.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText">Если функция возвращает <b>false</b> — элемент <b>b</b> будет стоять раньше элемента <b>a</b>.</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText">Для сортировки по возрастанию: <code>return a < b</code>. Для сортировки по убыванию: <code>return a > b</code>.</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>💡 Практическое применение:</strong> Таблица рекордов (топ-10 игроков), сортировка инвентаря по алфавиту, упорядочивание списка врагов по расстоянию до игрока.</div>',
+        taskTitle: '📝 Задание 18: Сортировка',
+        taskDesc: 'Создай массив {9, 3, 7, 1, 4}. Отсортируй его по возрастанию через table.sort(). Затем выведи все элементы через ipairs (каждый с новой строки).',
+        criteria: ['Массив из 5 чисел', 'table.sort()', 'Вывод через ipairs'],
+        starter: '-- Создай массив arr с числами 9, 3, 7, 1, 4\n-- Отсортируй через table.sort\n-- Выведи все элементы через ipairs\n',
+        checks: [{ t: 'code', v: 'table.sort', msg: 'Нужен table.sort' }, { t: 'code', v: 'ipairs', msg: 'Нужен ipairs для вывода' }]
+    },
+
+    // ==================== УРОК 19 ====================
+    {
+        title: 'Паттерны (string.match)',
+        theory: '<span class="sectionLabel">📖 Теория</span>' +
+            '<h3>Извлекаем данные из строк по шаблону</h3>' +
+            '<p>В Lua есть встроенная система <b>паттернов</b> (упрощённая версия регулярных выражений). С их помощью можно искать и извлекать данные из строк: числа, слова, email-адреса и многое другое.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- Извлекаем число из строки</span>\n<span class="kw">local</span> s = <span class="str">"Цена: 199 рублей"</span>\n<span class="kw">local</span> price = s:<span class="func">match</span>(<span class="str">"(%d+)"</span>)\n<span class="func">print</span>(price)  <span class="cmt">-- "199"</span>\n\n<span class="cmt">-- Извлекаем слово (буквы)</span>\n<span class="kw">local</span> s2 = <span class="str">"Имя: Алекс, Возраст: 25"</span>\n<span class="kw">local</span> name = s2:<span class="func">match</span>(<span class="str">"Имя: (%a+)"</span>)\n<span class="func">print</span>(name)  <span class="cmt">-- "Алекс" (русские буквы тоже работают)</span>\n\n<span class="cmt">-- Извлекаем два числа сразу</span>\n<span class="kw">local</span> s3 = <span class="str">"Координаты: x=100, y=200"</span>\n<span class="kw">local</span> x, y = s3:<span class="func">match</span>(<span class="str">"x=(%d+), y=(%d+)"</span>)\n<span class="func">print</span>(x, y)  <span class="cmt">-- "100"  "200"</span>\n\n<span class="cmt">-- Поиск email (более сложный паттерн)</span>\n<span class="kw">local</span> s4 = <span class="str">"Пишите на admin@site.ru"</span>\n<span class="kw">local</span> email = s4:<span class="func">match</span>(<span class="str">"([%w%.]+@[%w%.]+)"</span>)\n<span class="func">print</span>(email)  <span class="cmt">-- "admin@site.ru"</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🔍 Основные паттерны:</div>' +
+            '<div class="expLine"><span class="expNum">1</span><span class="expText"><code>%d</code> — любая цифра (0-9). <code>%d+</code> — одна или более цифр подряд.</span></div>' +
+            '<div class="expLine"><span class="expNum">2</span><span class="expText"><code>%a</code> — любая буква. <code>%a+</code> — одно или более букв подряд.</span></div>' +
+            '<div class="expLine"><span class="expNum">3</span><span class="expText"><code>%w</code> — буква или цифра. <code>%s</code> — пробельный символ (пробел, табуляция).</span></div>' +
+            '<div class="expLine"><span class="expNum">4</span><span class="expText"><code>%.</code> — точка (экранированная). <code>.</code> — любой символ. <code>.-</code> — любой текст (ленивый, минимально возможный).</span></div>' +
+            '<div class="expLine"><span class="expNum">5</span><span class="expText"><code>()</code> — скобки ЗАХВАТЫВАЮТ найденное. Всё что в скобках возвращается как результат.</span></div>' +
+            '<div class="expLine"><span class="expNum">6</span><span class="expText"><code>+</code> — один или более. <code>*</code> — ноль или более. <code>-</code> — ноль или более (ленивый).</span></div>' +
+            '</div>' +
+            '<div class="hintBox"><strong>⚠️ Отличие от регулярных выражений:</strong> Паттерны Lua проще чем полноценные regex (нет <code>|</code>, <code>{n,m}</code>, <code>\\b</code>). Но для большинства задач их достаточно. Если нужно больше — используй библиотеку lpeg.</div>',
+        taskTitle: '📝 Задание 19: Извлечение данных',
+        taskDesc: 'Из строки "Цена: 199 руб" извлеки число с помощью match и выведи его. Используй паттерн "%d+" в скобках.',
+        criteria: ['Использован match', 'Паттерн %d+', 'Вывод числа 199'],
+        starter: '-- Создай строку s = "Цена: 199 руб"\n-- Используй s:match() с паттерном "(%d+)"\n-- Выведи результат\n',
+        checks: [{ t: 'code', v: 'match', msg: 'Нужен match' }, { t: 'out', v: '199', msg: 'Должно извлечься число 199' }]
+    },
+
+    // ==================== УРОК 20 ====================
+    {
+        title: 'Итоговый проект: Мини-калькулятор',
+        theory: '<span class="sectionLabel">🎯 Итог Lua</span>' +
+            '<h3>Соединяем всё вместе</h3>' +
+            '<p>Поздравляю! Ты прошёл весь курс чистого Lua. Это финальный проект который объединяет все полученные знания: переменные, таблицы, функции.</p>' +
+            '<p>Мы создадим таблицу-калькулятор с функциями для всех арифметических операций. Это покажет как организовать код в виде модуля с набором связанных функций.</p>' +
+            '<div class="codeBlock"><span class="cmt">-- Создаём таблицу-калькулятор</span>\n<span class="kw">local</span> Calculator = {\n    add = <span class="kw">function</span>(a, b) <span class="kw">return</span> a + b <span class="kw">end</span>,\n    sub = <span class="kw">function</span>(a, b) <span class="kw">return</span> a - b <span class="kw">end</span>,\n    mul = <span class="kw">function</span>(a, b) <span class="kw">return</span> a * b <span class="kw">end</span>,\n    div = <span class="kw">function</span>(a, b)\n        <span class="kw">if</span> b == <span class="num">0</span> <span class="kw">then</span>\n            <span class="kw">return</span> <span class="str">"Ошибка: деление на ноль!"</span>\n        <span class="kw">end</span>\n        <span class="kw">return</span> a / b\n    <span class="kw">end</span>\n}\n\n<span class="cmt">-- Используем калькулятор</span>\n<span class="func">print</span>(<span class="str">"12 + 4 = "</span> .. Calculator.<span class="func">add</span>(<span class="num">12</span>, <span class="num">4</span>))  <span class="cmt">-- 16</span>\n<span class="func">print</span>(<span class="str">"12 - 4 = "</span> .. Calculator.<span class="func">sub</span>(<span class="num">12</span>, <span class="num">4</span>))  <span class="cmt">-- 8</span>\n<span class="func">print</span>(<span class="str">"12 * 4 = "</span> .. Calculator.<span class="func">mul</span>(<span class="num">12</span>, <span class="num">4</span>))  <span class="cmt">-- 48</span>\n<span class="func">print</span>(<span class="str">"12 / 4 = "</span> .. Calculator.<span class="func">div</span>(<span class="num">12</span>, <span class="num">4</span>))  <span class="cmt">-- 3</span>\n<span class="func">print</span>(<span class="str">"12 / 0 = "</span> .. Calculator.<span class="func">div</span>(<span class="num">12</span>, <span class="num">0</span>))  <span class="cmt">-- Ошибка</span></div>' +
+            '<div class="explainBox"><div class="expTitle">🏆 Чему ты научился за 20 уроков:</div>' +
+            '<div class="expLine"><span class="expNum">✅</span><span class="expText">Переменные и типы данных (local, string, number, boolean, nil)</span></div>' +
+            '<div class="expLine"><span class="expNum">✅</span><span class="expText">Арифметические операции (+, -, *, /, %, ^)</span></div>' +
+            '<div class="expLine"><span class="expNum">✅</span><span class="expText">Условные операторы (if, elseif, else, сравнения)</span></div>' +
+            '<div class="expLine"><span class="expNum">✅</span><span class="expText">Циклы (while, for)</span></div>' +
+            '<div class="expLine"><span class="expNum">✅</span><span class="expText">Таблицы-массивы и таблицы-словари</span></div>' +
+            '<div class="expLine"><span class="expNum">✅</span><span class="expText">Функции и возврат значений</span></div>' +
+            '<div class="expLine"><span class="expNum">✅</span><span class="expText">Модули (require)</span></div>' +
+            '<div class="expLine"><span class="expNum">✅</span><span class="expText">Обработка ошибок (pcall)</span></div>' +
+            '<div class="expLine"><span class="expNum">✅</span><span class="expText">Замыкания, метатаблицы, корутины</span></div>' +
+            '<div class="expLine"><span class="expNum">✅</span><span class="expText">Рекурсия, сортировка, паттерны</span></div>' +
+            '</div>' +
+            '<div class="tipBox"><strong>🚀 Что дальше:</strong> Ты освоил базу Lua! Теперь можно переходить к созданию игр — треки Roblox Luau и Solar2D научат тебя применять эти знания на практике в реальных игровых движках.</div>',
+        taskTitle: '📝 Задание 20: Финальный проект Lua',
+        taskDesc: 'Создай таблицу ops с ЧЕТЫРЬМЯ функциями: add (сложение), sub (вычитание), mul (умножение), div (деление). Каждая принимает два числа и возвращает результат. Вызови все четыре с аргументами 12 и 4. Выведи каждый результат.',
+        criteria: ['Таблица ops', 'Функции add, sub, mul, div', 'Вызов с 12 и 4', 'Вывод всех 4 результатов'],
+        starter: '-- Создай таблицу ops\n-- Добавь функции add, sub, mul, div\n-- Вызови каждую с 12 и 4 и выведи результат\n',
+        checks: [{ t: 'code', v: 'add', msg: 'Нужна функция add' }, { t: 'code', v: 'div', msg: 'Нужна функция div' }, { t: 'out', v: '16', msg: '12+4=16' }, { t: 'out', v: '3', msg: '12/4=3' }]
+    }
+);
+
+        for (var i = 1; i <= 25; i++) {
+            lessons.roblox.push({ title: 'Roblox #' + i, theory: '<h3>Урок ' + i + '</h3><p>Скоро...</p>', taskTitle: 'Задание ' + i, taskDesc: 'Реши задачу.', criteria: [], starter: '-- Код\n', checks: [] });
+        }
+        for (var i = 1; i <= 22; i++) {
+            lessons.solar.push({ title: 'Solar2D #' + i, theory: '<h3>Урок ' + i + '</h3><p>Скоро...</p>', taskTitle: 'Задание ' + i, taskDesc: 'Реши задачу.', criteria: [], starter: '-- Код\n', checks: [] });
+        }
+
+        var curTrack = null, curIdx = 0, editor = null, passed = false;
+        var scrollEl = $('scrollContent');
+
+        function renderTracks() {
+            var h = '';
+            for (var i = 0; i < tracks.length; i++) {
+                var t = tracks[i];
+                var d = progress[t.id].done;
+                var pct = t.total > 0 ? Math.round((d / t.total) * 100) : 0;
+                h += '<div class="trackCard" data-id="' + t.id + '"><div class="icon">' + t.icon + '</div><div class="title">' + t.title + '</div><div class="desc">' + t.desc + '</div><div class="prog"><span>' + d + '/' + t.total + '</span><div class="progBar"><div class="progFill ' + t.color + '" style="width:' + pct + '%"></div></div><span>' + pct + '%</span></div></div>';
+            }
+            $('tracksContainer').innerHTML = h;
+            document.querySelectorAll('.trackCard').forEach(function(c) {
+                c.addEventListener('click', function() { openTrack(this.dataset.id); });
+            });
+        }
+
+        function openTrack(id) {
+            curTrack = id;
+            curIdx = progress[id].done;
+            if (curIdx >= lessons[id].length) curIdx = 0;
+            passed = false;
+            $('mainScreen').classList.add('hidden');
+            $('lessonScreen').classList.remove('hidden');
+            loadLesson();
+            setTimeout(function() { if (editor) editor.layout(); }, 300);
+            scrollEl.scrollTop = 0;
+        }
+
+        function goBack() {
+            curTrack = null;
+            $('lessonScreen').classList.add('hidden');
+            $('mainScreen').classList.remove('hidden');
+            renderTracks();
+        }
+        $('btnBack').addEventListener('click', goBack);
+
+        function loadLesson() {
+            var ls = lessons[curTrack];
+            if (!ls || ls.length === 0) return;
+            if (curIdx >= ls.length) curIdx = ls.length - 1;
+            var l = ls[curIdx];
+            passed = false;
+            var tr = tracks.find(function(t) { return t.id === curTrack; });
+            $('lessonName').textContent = (tr ? tr.title : '') + ' — ' + l.title;
+            $('lessonNum').textContent = (curIdx + 1) + ' / ' + ls.length;
+            $('theorySection').innerHTML = l.theory;
+            $('tTitle').textContent = l.taskTitle;
+            $('tDesc').textContent = l.taskDesc;
+            $('tCriteria').innerHTML = (l.criteria || []).map(function(c) { return '<span class="critBadge">✅ ' + c + '</span>'; }).join('');
+            $('output').innerHTML = '🟢 Урок загружен. Напиши код и нажми «Запустить».';
+            $('btnNext').disabled = true;
+            $('btnNext').textContent = 'Далее →';
+            if (editor) { editor.setValue(l.starter || '-- Твой код\n'); }
+            scrollEl.scrollTop = 0;
+            setTimeout(function() { scrollEl.scrollTop = 0; }, 100);
+            if (curIdx > progress[curTrack].done) {
+                progress[curTrack].done = curIdx;
+                saveProgressToServer();
+            }
+        }
+
+        function initEditor(code) {
+            if (editor) { editor.dispose(); editor = null; }
+            editor = monaco.editor.create($('editor'), {
+                value: code || '', language: 'lua', theme: 'vs-dark', fontSize: 14,
+                fontFamily: "'Consolas','Courier New',monospace", minimap: { enabled: false },
+                lineNumbers: 'on', scrollBeyondLastLine: false, automaticLayout: true, tabSize: 4, wordWrap: 'on'
+            });
+        }
+
+        function executeCode(code) {
+            var prints = [], errors = [];
+            try {
+                var js = code.replace(/--.*$/gm, '');
+                var strings = [];
+                js = js.replace(/"[^"]*"/g, function(m) { strings.push(m); return '❝' + (strings.length - 1) + '❞'; });
+                js = js.replace(/'[^']*'/g, function(m) { strings.push(m); return '❝' + (strings.length - 1) + '❞'; });
+                js = js.replace(/\blocal\s+(\w+)/g, 'var $1');
+                var output = [];
+                js = js.replace(/\bprint\s*\(/g, 'output.push(');
+                js = js.replace(/\bif\s+(.+?)\s+then\b/g, 'if($1){');
+                js = js.replace(/\belseif\s+(.+?)\s+then\b/g, '}else if($1){');
+                js = js.replace(/\belse\b(?!\s*if)/g, '}else{');
+                js = js.replace(/\bend\b/g, '}');
+                js = js.replace(/~=/g, '!==');
+                js = js.replace(/\.\./g, '+');
+                for (var i = 0; i < strings.length; i++) { js = js.replace('❝' + i + '❞', strings[i]); }
+                eval(js);
+                for (var i = 0; i < output.length; i++) { prints.push(String(output[i])); }
+            } catch (e) { errors.push('Ошибка: ' + e.message); }
+            return { prints: prints, errors: errors };
+        }
+
+        function checkTask(code) {
+            var l = lessons[curTrack][curIdx];
+            if (!l || !l.checks) return { allOk: true, res: [] };
+            var res = [];
+            for (var i = 0; i < l.checks.length; i++) {
+                var c = l.checks[i];
+                if (c.t === 'kw') { var re = new RegExp('\\b' + c.kw + '\\b', 'gi'); var m = code.match(re); var cnt = m ? m.length : 0;
+                    res.push({ ok: cnt >= c.min, msg: (cnt >= c.min ? '✅ ' : '❌ ') + c.msg + ' (' + cnt + ')' }); }
+                else if (c.t === 'out') { var r = executeCode(code); var all = r.prints.join(' ');
+                    res.push({ ok: all.indexOf(c.v) !== -1, msg: (all.indexOf(c.v) !== -1 ? '✅ ' : '❌ ') + c.msg }); }
+                else if (c.t === 'code') { res.push({ ok: code.indexOf(c.v) !== -1, msg: (code.indexOf(c.v) !== -1 ? '✅ ' : '❌ ') + c.msg }); }
+            }
+            return { allOk: res.every(function(r) { return r.ok; }), res: res };
+        }
+
+        $('btnRun').addEventListener('click', function() {
+            if (!editor) return;
+            var r = executeCode(editor.getValue());
+            var h = '';
+            r.errors.forEach(function(e) { h += '<span class="outErr">' + e + '</span><br>'; });
+            r.prints.forEach(function(p) { h += p + '<br>'; });
+            $('output').innerHTML = h || '<span class="outInfo">Выполнено.</span>';
+        });
+
+        $('btnCheck').addEventListener('click', function() {
+            if (!editor) return;
+            var r = checkTask(editor.getValue());
+            var h = '<span class="outHead">🔍 Проверка:</span><br>';
+            r.res.forEach(function(x) { h += '<span class="' + (x.ok ? 'outOk' : 'outErr') + '">' + x.msg + '</span><br>'; });
+            if (r.allOk) { h += '<br><span class="outOk outBig">🎉 Пройдено!</span>';
+                passed = true; $('btnNext').disabled = false;
+                var done = curIdx + 1; if (done > progress[curTrack].done) { progress[curTrack].done = done;
+                    saveProgressToServer(); } }
+            else { h += '<br><span class="outWarn">⚠ Исправь ошибки.</span>'; passed = false;
+                $('btnNext').disabled = true; }
+            $('output').innerHTML = h;
+        });
+
+        $('btnReset').addEventListener('click', function() {
+            if (!editor || !curTrack) return;
+            editor.setValue(lessons[curTrack][curIdx].starter || '-- Код\n');
+            $('output').innerHTML = '🔄 Сброшено.'; passed = false;
+            $('btnNext').disabled = true;
+        });
+
+        $('btnNext').addEventListener('click', function() {
+            if (!passed) return;
+            var ls = lessons[curTrack];
+            if (curIdx < ls.length - 1) { curIdx++;
+                loadLesson(); }
+            else { $('output').innerHTML = '<span class="outOk outBig">🏆 Трек пройден!</span>';
+                $('btnNext').textContent = 'Готово'; $('btnNext').disabled = true;
+                setTimeout(goBack, 2000); }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if ($('lessonScreen').classList.contains('hidden')) return;
+            if (e.ctrlKey && e.key === 'Enter') { e.preventDefault();
+                $('btnRun').click(); }
+            if (e.ctrlKey && e.shiftKey && e.key === 'Enter') { e.preventDefault();
+                $('btnCheck').click(); }
+            if (e.key === 'Escape') goBack();
+        });
+
+        initEditor('-- Напиши код\n');
+        checkServer();
+        console.log('🚀 LuaCraft v16 готов! Скобки спасают от NaN!');
+    });
+    </script>
+</body>
+</html>
